@@ -1,0 +1,467 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link href="./styles.css" rel="stylesheet" />
+    <style>
+      /* Animation styles */
+      @keyframes fadeOut {
+        from {
+          opacity: 1;
+          transform: translateY(0);
+        }
+        to {
+          opacity: 0;
+          transform: translateY(-10px);
+        }
+      }
+
+      .fade-out {
+        animation: fadeOut 0.3s ease-out forwards;
+      }
+
+      /* Grid styles for assets */
+      #assets-container {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+        gap: 20px;
+        padding: 20px;
+        margin-bottom: 30px;
+      }
+
+      .asset-item {
+        border: 1px solid #ddd;
+        border-radius: 8px;
+        padding: 10px;
+        text-align: center;
+        background: white;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+      }
+
+      .asset-item img {
+        width: 100px;
+        height: 100px;
+        object-fit: cover;
+        border-radius: 4px;
+        margin-bottom: 8px;
+      }
+
+      .asset-item p {
+        margin: 4px 0;
+        font-size: 14px;
+      }
+
+      .asset-item .asset-type {
+        color: #666;
+        font-size: 12px;
+      }
+
+      /* Basic styles for views and filters */
+      .filter-container {
+        margin: 20px 0;
+        display: flex;
+        flex-direction: row;
+        gap: 10px;
+      }
+
+      .filter-container input[type="text"],
+      .filter-container select {
+        padding: 5px;
+        font-size: 14px;
+      }
+
+      .filter-container label {
+        font-size: 14px;
+        font-weight: bold;
+      }
+
+      .view-buttons {
+        margin-bottom: 20px;
+        display: flex;
+        gap: 10px;
+      }
+
+      .view-buttons button {
+        padding: 8px 16px;
+        cursor: pointer;
+        border: 1px solid #0073e6;
+        background-color: white;
+        color: #0073e6;
+        border-radius: 4px;
+        font-size: 14px;
+      }
+
+      .view-buttons button.active {
+        background-color: #0073e6;
+        color: white;
+      }
+
+      .sortable {
+        position: relative;
+        cursor: pointer;
+      }
+
+      .sort-icon {
+        font-size: 0.8em;
+        margin-left: 5px;
+        visibility: hidden;
+      }
+
+      .sortable:hover .sort-icon {
+        visibility: visible;
+      }
+
+      .toggle-container {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+
+      .toggle-input {
+        width: 40px;
+        height: 20px;
+        background: #ccc;
+        border-radius: 10px;
+        position: relative;
+        cursor: pointer;
+        transition: background-color 0.3s;
+      }
+
+      .toggle-input::after {
+        content: '';
+        position: absolute;
+        width: 18px;
+        height: 18px;
+        background: white;
+        border-radius: 50%;
+        top: 1px;
+        left: 1px;
+        transition: transform 0.3s;
+      }
+
+      .toggle-input.checked {
+        background: #0073e6;
+      }
+
+      .toggle-input.checked::after {
+        transform: translateX(20px);
+      }
+
+      input[type="text"]:disabled {
+        background-color: #f5f5f5;
+        color: #999;
+        cursor: not-allowed;
+      }
+
+      .copy-url, .open-url {
+        padding: 4px 8px;
+        margin: 0 4px;
+        cursor: pointer;
+        border: 1px solid #0073e6;
+        background: white;
+        color: #0073e6;
+        border-radius: 4px;
+        transition: all 0.3s ease;
+        width: 70px;
+        display: inline-block;
+        text-align: center;
+      }
+
+      .button-container {
+        display: flex;
+        gap: 8px;
+        justify-content: center;
+        align-items: center;
+      }
+
+      .copy-url:hover, .open-url:hover {
+        background: #0073e6;
+        color: white;
+      }
+
+      .copy-url.success {
+        background: #4CAF50;
+        border-color: #4CAF50;
+        color: white;
+        pointer-events: none;
+      }
+    </style>
+  </head>
+
+  <body>
+    <form id="extension-form">
+      <div>Choose a text element and select the emoji to insert</div>
+      <div id="emoji-container">
+        <button id="smile">😊</button>
+        <button id="wink">😉</button>
+        <button id="heart">😍</button>
+        <button id="cry">😭</button>
+      </div>
+    </form>
+
+    <div id="assets-container">
+      <!-- Assets will be dynamically loaded here -->
+    </div>
+
+    <!-- Table wrapper -->
+    <div class="table-wrapper">
+      <!-- View buttons -->
+      <div class="view-buttons">
+        <button id="action-required-view" class="active">Action Required</button>
+        <button id="all-images-view">All Images</button>
+      </div>
+
+      <div class="filter-container">
+        <div>
+          <label for="keyword-filter">Keyword</label>
+          <input type="text" id="keyword-filter" placeholder="Filter by file name or alt text" />
+        </div>
+        <div>
+          <label for="type-filter">Type</label>
+          <select id="type-filter">
+            <option value="">All Types</option>
+            <option value="meaningful">Meaningful</option>
+            <option value="decorative">Decorative</option>
+          </select>
+        </div>
+      </div>
+
+      <table id="emoji-details-table" border="1" style="margin-top: 0; width: 100%; border-collapse: collapse;">
+        <thead>
+          <tr>
+            <th>Thumbnail</th>
+            <th class="sortable" data-column="altText">Alt Text <span class="sort-icon">⇅</span></th>
+            <th class="sortable" data-column="type">Type <span class="sort-icon">⇅</span></th>
+            <th>Image URL</th>
+            <th class="sortable" data-column="fileName">File Name <span class="sort-icon">⇅</span></th>
+            <th class="sortable" data-column="dateAdded">Date Added <span class="sort-icon">⇅</span></th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>
+              <img src="https://placehold.co/400x300/png?text=Hero+Banner" alt="Hero Banner Image" style="width: 50px; height: 50px; object-fit: cover;" />
+            </td>
+            <td>
+              <input type="text" value="A hero banner showcasing our main product features" placeholder="Enter alt text" style="width: 100%;" />
+            </td>
+            <td>
+              <div class="toggle-container">
+                <span class="toggle-label">Decorative?</span>
+                <div class="toggle-input" data-type="meaningful"></div>
+              </div>
+            </td>
+            <td>
+              <div class="button-container">
+                <button class="copy-url">Copy</button>
+                <button class="open-url">Open</button>
+              </div>
+            </td>
+            <td>Hero Banner Image</td>
+            <td>03/15/2024</td>
+          </tr>
+          <tr>
+            <td>
+              <img src="https://placehold.co/200x200/png?text=Profile" alt="Team Profile Photo" style="width: 50px; height: 50px; object-fit: cover;" />
+            </td>
+            <td>
+              <input type="text" value="" placeholder="No alt text needed (decorative image)" style="width: 100%;" disabled />
+            </td>
+            <td>
+              <div class="toggle-container">
+                <span class="toggle-label">Decorative?</span>
+                <div class="toggle-input checked" data-type="decorative"></div>
+              </div>
+            </td>
+            <td>
+              <div class="button-container">
+                <button class="copy-url">Copy</button>
+                <button class="open-url">Open</button>
+              </div>
+            </td>
+            <td>Team Profile Photo</td>
+            <td>03/14/2024</td>
+          </tr>
+          <tr>
+            <td>
+              <img src="https://placehold.co/800x400/png?text=Pattern" alt="Background Pattern" style="width: 50px; height: 50px; object-fit: cover;" />
+            </td>
+            <td>
+              <input type="text" value="Geometric pattern with blue and white shapes" placeholder="Enter alt text" style="width: 100%;" />
+            </td>
+            <td>
+              <div class="toggle-container">
+                <span class="toggle-label">Decorative?</span>
+                <div class="toggle-input" data-type="meaningful"></div>
+              </div>
+            </td>
+            <td>
+              <div class="button-container">
+                <button class="copy-url">Copy</button>
+                <button class="open-url">Open</button>
+              </div>
+            </td>
+            <td>Background Pattern</td>
+            <td>03/13/2024</td>
+          </tr>
+          <tr>
+            <td>
+              <img src="https://placehold.co/150x150/png?text=Icon" alt="Feature Icon" style="width: 50px; height: 50px; object-fit: cover;" />
+            </td>
+            <td>
+              <input type="text" value="" placeholder="No alt text needed (decorative image)" style="width: 100%;" disabled />
+            </td>
+            <td>
+              <div class="toggle-container">
+                <span class="toggle-label">Decorative?</span>
+                <div class="toggle-input checked" data-type="decorative"></div>
+              </div>
+            </td>
+            <td>
+              <div class="button-container">
+                <button class="copy-url">Copy</button>
+                <button class="open-url">Open</button>
+              </div>
+            </td>
+            <td>Feature Icon</td>
+            <td>03/12/2024</td>
+          </tr>
+          <tr>
+            <td>
+              <img src="https://placehold.co/600x400/png?text=Product" alt="Product Image" style="width: 50px; height: 50px; object-fit: cover;" />
+            </td>
+            <td>
+              <input type="text" value="Premium wireless headphones in matte black finish" placeholder="Enter alt text" style="width: 100%;" />
+            </td>
+            <td>
+              <div class="toggle-container">
+                <span class="toggle-label">Decorative?</span>
+                <div class="toggle-input" data-type="meaningful"></div>
+              </div>
+            </td>
+            <td>
+              <div class="button-container">
+                <button class="copy-url">Copy</button>
+                <button class="open-url">Open</button>
+              </div>
+            </td>
+            <td>Product Image</td>
+            <td>03/11/2024</td>
+          </tr>
+          <tr>
+            <td>
+              <img src="https://placehold.co/300x200/png?text=Blog" alt="Blog Post Cover" style="width: 50px; height: 50px; object-fit: cover;" />
+            </td>
+            <td>
+              <input type="text" value="" placeholder="Enter alt text" style="width: 100%;" />
+            </td>
+            <td>
+              <div class="toggle-container">
+                <span class="toggle-label">Decorative?</span>
+                <div class="toggle-input" data-type="meaningful"></div>
+              </div>
+            </td>
+            <td>
+              <div class="button-container">
+                <button class="copy-url">Copy</button>
+                <button class="open-url">Open</button>
+              </div>
+            </td>
+            <td>Blog Post Cover</td>
+            <td>03/10/2024</td>
+          </tr>
+          <tr>
+            <td>
+              <img src="https://placehold.co/500x300/png?text=Gallery" alt="Gallery Image" style="width: 50px; height: 50px; object-fit: cover;" />
+            </td>
+            <td>
+              <input type="text" value="" placeholder="No alt text needed (decorative image)" style="width: 100%;" disabled />
+            </td>
+            <td>
+              <div class="toggle-container">
+                <span class="toggle-label">Decorative?</span>
+                <div class="toggle-input checked" data-type="decorative"></div>
+              </div>
+            </td>
+            <td>
+              <div class="button-container">
+                <button class="copy-url">Copy</button>
+                <button class="open-url">Open</button>
+              </div>
+            </td>
+            <td>Gallery Image</td>
+            <td>03/09/2024</td>
+          </tr>
+          <tr>
+            <td>
+              <img src="https://placehold.co/100x100/png?text=Avatar" alt="User Avatar" style="width: 50px; height: 50px; object-fit: cover;" />
+            </td>
+            <td>
+              <input type="text" value="Profile picture of John Smith, CEO" placeholder="Enter alt text" style="width: 100%;" />
+            </td>
+            <td>
+              <div class="toggle-container">
+                <span class="toggle-label">Decorative?</span>
+                <div class="toggle-input" data-type="meaningful"></div>
+              </div>
+            </td>
+            <td>
+              <div class="button-container">
+                <button class="copy-url">Copy</button>
+                <button class="open-url">Open</button>
+              </div>
+            </td>
+            <td>User Avatar</td>
+            <td>03/08/2024</td>
+          </tr>
+          <tr>
+            <td>
+              <img src="https://placehold.co/1200x600/png?text=Marketing" alt="Marketing Banner" style="width: 50px; height: 50px; object-fit: cover;" />
+            </td>
+            <td>
+              <input type="text" value="" placeholder="Enter alt text" style="width: 100%;" />
+            </td>
+            <td>
+              <div class="toggle-container">
+                <span class="toggle-label">Decorative?</span>
+                <div class="toggle-input" data-type="meaningful"></div>
+              </div>
+            </td>
+            <td>
+              <div class="button-container">
+                <button class="copy-url">Copy</button>
+                <button class="open-url">Open</button>
+              </div>
+            </td>
+            <td>Marketing Banner</td>
+            <td>03/07/2024</td>
+          </tr>
+          <tr>
+            <td>
+              <img src="https://placehold.co/400x400/png?text=Logo" alt="Company Logo" style="width: 50px; height: 50px; object-fit: cover;" />
+            </td>
+            <td>
+              <input type="text" value="" placeholder="No alt text needed (decorative image)" style="width: 100%;" disabled />
+            </td>
+            <td>
+              <div class="toggle-container">
+                <span class="toggle-label">Decorative?</span>
+                <div class="toggle-input checked" data-type="decorative"></div>
+              </div>
+            </td>
+            <td>
+              <div class="button-container">
+                <button class="copy-url">Copy</button>
+                <button class="open-url">Open</button>
+              </div>
+            </td>
+            <td>Company Logo</td>
+            <td>03/06/2024</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <script src="index.js" type="module" defer></script>
+  </body>
+</html>
